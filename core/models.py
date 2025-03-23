@@ -30,6 +30,10 @@ class NotificationType(GenericBaseModel):
     def __str__(self):
         return self.name
 
+    @property
+    def active_providers(self):
+        return Provider.objects.filter(notification_type=self, is_active=True)
+
     class Meta:
         ordering = ('-date_created',)
 
@@ -45,9 +49,9 @@ class System(GenericBaseModel):
         ordering = ('-date_created',)
 
 
-class NotificationTemplate(GenericBaseModel):
+class Template(GenericBaseModel):
     code = models.CharField(max_length=100, unique=True)
-    type = models.ForeignKey(NotificationType, on_delete=models.CASCADE)
+    notification_type = models.ForeignKey(NotificationType, on_delete=models.CASCADE)
     subject = models.CharField(max_length=255, blank=True)
     body = models.TextField()
     is_active = models.BooleanField(default=True)
@@ -59,7 +63,10 @@ class NotificationTemplate(GenericBaseModel):
         ordering = ('-date_created',)
 
 class Provider(GenericBaseModel):
+    notification_type = models.ForeignKey(NotificationType, on_delete=models.CASCADE)
+    config = models.JSONField()
     is_active = models.BooleanField(default=True)
+    class_name = models.CharField(max_length=100,  help_text="Callback class containing its config")
 
     def __str__(self):
         return self.name
@@ -67,29 +74,17 @@ class Provider(GenericBaseModel):
     class Meta:
         ordering = ('-date_created',)
 
-class ProviderConfig(BaseModel):
-    provider = models.ForeignKey(Provider, on_delete=models.CASCADE, related_name='configs')
-    system = models.ForeignKey(System, on_delete=models.CASCADE)
-    type = models.ForeignKey(NotificationType, on_delete=models.CASCADE)
-    config = models.JSONField()
-    is_active = models.BooleanField(default=True)
-
-    def __str__(self):
-        return "%s %s %s config" % (self.provider.name, self.system.name, self.type.name)
-
-    class Meta:
-        ordering = ('-date_created',)
-
 class Notification(BaseModel):
     system = models.ForeignKey(System, on_delete=models.CASCADE)
-    type = models.ForeignKey(NotificationType, on_delete=models.CASCADE)
-    to = models.CharField(max_length=255)
-    template = models.ForeignKey(NotificationTemplate, on_delete=models.SET_NULL, null=True)
+    notification_type = models.ForeignKey(NotificationType, on_delete=models.CASCADE)
+    recipient = models.CharField(max_length=255)
+    template = models.ForeignKey(Template, on_delete=models.SET_NULL, null=True)
     data = models.JSONField()
+    sent_time = models.DateTimeField(null=True)
     status = models.ForeignKey(State, on_delete=models.CASCADE)
 
     def __str__(self):
-        return "%s %s notification to %s" %(self.system.name, self.type.name, self.to)
+        return "%s %s notification to %s" %(self.system.name, self.notification_type.name, self.recipient)
 
     class Meta:
         ordering = ('-date_created',)
