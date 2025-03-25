@@ -59,7 +59,7 @@ class NotificationManager:
         if not isinstance(notification_data['data'], dict):
             raise ValueError("'data' must be a dictionary")
 
-        notification_data['template_code'] = str(notification_data.get('template_code', '')).upper()
+        notification_data['template_name'] = str(notification_data.get('template_name', '')).upper()
 
     @staticmethod
     def save_notification(notification_data: Dict) -> Notification:
@@ -69,7 +69,7 @@ class NotificationManager:
         notification_type = NotificationTypeService().get(name=notification_data.get('notification_type'))
         if notification_type is None:
             raise Exception("Invalid notification type")
-        template = TemplateService().get(code=notification_data.get('template_code'))
+        template = TemplateService().get(name=notification_data.get('template_name'))
         notification = NotificationService().create(
             system=system, notification_type=notification_type, recipient=notification_data.get('recipient'),
             template=template, data=notification_data.get('data'), status=StateService().get(name='Pending')
@@ -88,8 +88,7 @@ class NotificationManager:
     def send_notification(self, notification: Notification) -> bool:
         try:
             notification_handler = self.get_notification_instance(notification)
-            if not notification_handler.validate():
-                raise Exception("Invalid recipient")
+            notification_handler.validate()
             active_providers = notification_handler.active_providers()
             if not active_providers.exists():
                 raise Exception("No active providers found for %s notifications" % notification.notification_type.name)

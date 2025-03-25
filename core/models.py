@@ -50,7 +50,6 @@ class System(GenericBaseModel):
 
 
 class Template(GenericBaseModel):
-    code = models.CharField(max_length=100, unique=True)
     notification_type = models.ForeignKey(NotificationType, on_delete=models.CASCADE)
     subject = models.CharField(max_length=255, blank=True)
     body = models.TextField()

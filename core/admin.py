@@ -23,10 +23,10 @@ class SystemAdmin(admin.ModelAdmin):
 @admin.register(Template)
 class TemplateAdmin(admin.ModelAdmin):
     list_display = (
-        'code', 'name', 'description', 'notification_type', 'subject', 'body', 'is_active', 'date_modified',
+        'name', 'description', 'notification_type', 'subject', 'body', 'is_active', 'date_modified',
         'date_created')
     list_filter = ('notification_type', 'is_active')
-    search_fields = ('id', 'code', 'name', 'description', 'notification_type__name', 'subject')
+    search_fields = ('id', 'name', 'description', 'notification_type__name', 'subject')
 
 @admin.register(Provider)
 class ProviderAdmin(admin.ModelAdmin):
@@ -39,5 +39,5 @@ class NotificationAdmin(admin.ModelAdmin):
     list_display = (
         'system', 'notification_type', 'recipient', 'template', 'data', 'sent_time', 'status', 'date_modified', 'date_created')
     list_filter = ('system', 'notification_type', 'template', 'status')
-    search_fields = ('id', 'system__name', 'notification_type__name', 'recipient', 'template__code', 'status__name')
+    search_fields = ('id', 'system__name', 'notification_type__name', 'recipient', 'template__name', 'status__name')
 
