@@ -7,14 +7,33 @@ from core.backend.notification_types.base_notification import BaseNotification
 
 
 class PushNotification(BaseNotification):
+    """
+    Handles push notifications by preparing message content and validating required fields.
+    """
+
     def prepare_content(self) -> Dict[str, str]:
-        body = Template(self.template.content).render(Context(self.data))
+        """
+        Prepares the push notification content by rendering the body with context.
+        Title is taken from context with a fallback default.
+
+        :return: Dictionary with keys 'title' and 'body' for the push message.
+        """
+        body = Template(self.template.body).render(Context(self.context))
+
         return {
-            'title': self.data.get('title', 'Notification'),
-            'body': body
+            'title': self.context.get('title', 'Notification'),
+            'body': body,
+            'data': {}, # optional payload
         }
 
     def validate(self) -> bool:
-        if not self.recipient:  # Device token
+        """
+        Validates that the push notification has a recipient (typically a device token).
+
+        :raises ValidationError: if no recipient is found.
+        :return: True if validation passes.
+        """
+        if not self.recipient:
             raise ValidationError("Push notification requires a device token")
+
         return True

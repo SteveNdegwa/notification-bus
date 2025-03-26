@@ -76,9 +76,10 @@ class Provider(GenericBaseModel):
 class Notification(BaseModel):
     system = models.ForeignKey(System, on_delete=models.CASCADE)
     notification_type = models.ForeignKey(NotificationType, on_delete=models.CASCADE)
-    recipient = models.CharField(max_length=255)
-    template = models.ForeignKey(Template, on_delete=models.SET_NULL, null=True)
-    data = models.JSONField()
+    recipient = models.TextField(help_text="One recipient or comma-separated multiple recipients")
+    template = models.ForeignKey(Template, null=True, on_delete=models.SET_NULL)
+    provider = models.ForeignKey(Provider, null=True, on_delete=models.SET_NULL)
+    context = models.JSONField()
     sent_time = models.DateTimeField(null=True)
     status = models.ForeignKey(State, on_delete=models.CASCADE)
 
