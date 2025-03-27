@@ -74,6 +74,7 @@ class Provider(GenericBaseModel):
         ordering = ('-date_created',)
 
 class Notification(BaseModel):
+    unique_identifier = models.CharField(max_length=255, null=True, blank=True)
     system = models.ForeignKey(System, on_delete=models.CASCADE)
     notification_type = models.ForeignKey(NotificationType, on_delete=models.CASCADE)
     recipient = models.TextField(help_text="One recipient or comma-separated multiple recipients")

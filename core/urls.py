@@ -1,6 +1,6 @@
 from django.urls import path
-from .views import test
+from .views import NotifyAPIsManager
 
 urlpatterns = [
-    path("test/", test, name="test"),
+    path("send-notification/", NotifyAPIsManager().queue_send_notification, name="send_notification"),
 ]

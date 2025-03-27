@@ -1,28 +1,34 @@
+import logging
+import json
+
+from django.core.handlers.wsgi import WSGIRequest
 from django.http import JsonResponse
-from django.utils.timezone import now
+from django.views.decorators.csrf import csrf_exempt
 
-from core.backend.notification_manager import NotificationManager
+from core.tasks import send_notification
 
+logger = logging.getLogger(__name__)
 
-def test(request):
-    context = {
-        "subject": "Your OTP Code",
-        "heading": "Verify Your Login",
-        "otp": "382196",
-        "action": "log in to your account",
-        "expiry_value": 10,
-        "expiry_period": "hour",
-        "system_name": "B2C",
-        "current_year": now().year,
-    }
+class NotifyAPIsManager:
+    @staticmethod
+    @csrf_exempt
+    def queue_send_notification(request: WSGIRequest) -> JsonResponse:
+        """
+        Queue a notification to be sent asynchronously.
 
-    data = {
-        "system": "B2C",
-        "notification_type": "email",
-        "recipient": "stevencallistus19@gmail.com",
-        "template_name": "email_login_otp",
-        "context": context
-    }
-    noti = NotificationManager().save_notification(data)
-    NotificationManager().send_notification(noti)
-    return JsonResponse({"name": "success"})
+        This view function handles HTTP POST requests to queue a notification for sending.
+        It expects the request body to contain JSON data with the notification details.
+        The function uses Celery to queue the task for sending the notification.
+
+        :param request: The HTTP request object.
+        :type request: WSGIRequest
+        :return: A JSON response indicating the result of the operation.
+        :rtype: JsonResponse
+        """
+        try:
+            data = json.loads(request.body)
+            send_notification.delay(data)
+            return JsonResponse({"code": "100.000.000", "message": "Notification queued successfully"})
+        except Exception as ex:
+            logger.exception("NotifyAPIsManager - queue_send_notification exception: %s" % ex)
+            return JsonResponse({"code": "999.999.999", "message": "Send notification failed with an exception"})

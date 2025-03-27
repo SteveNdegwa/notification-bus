@@ -70,6 +70,7 @@ class NotificationManager:
 
         notification = NotificationService().create(
             system=system,
+            unique_identifier=notification_data.get('unique_identifier', ''),
             notification_type=notification_type,
             recipient=notification_data.get('recipient'),
             template=template,

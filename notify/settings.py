@@ -70,6 +70,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'notify.wsgi.application'
 
+CSRF_ALLOWED_HOSTS = ["*"]
 
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
@@ -122,3 +123,22 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+""" RabbitMQ configs """
+# RABBITMQ_USER = os.environ.get('RABBITMQ_USER')
+# RABBITMQ_PASSWORD = os.environ.get('RABBITMQ_PASSWORD')
+# RABBITMQ_HOST = os.environ.get('RABBITMQ_HOST')
+# RABBITMQ_VHOST = os.environ.get('RABBITMQ_VHOST')
+# RABBITMQ_PORT = os.environ.get('RABBITMQ_PORT')
+
+RABBITMQ_HOST = 'localhost'
+RABBITMQ_PORT = 5672
+RABBITMQ_USER = 'guest'
+RABBITMQ_PASSWORD = 'guest'
+RABBITMQ_VHOST = '/'
+
+""" Celery configs """
+CELERY_BROKER_URL = f'amqp://{RABBITMQ_USER}:{RABBITMQ_PASSWORD}@{RABBITMQ_HOST}:{RABBITMQ_PORT}/{RABBITMQ_VHOST}'
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_TIMEZONE = 'UTC'
