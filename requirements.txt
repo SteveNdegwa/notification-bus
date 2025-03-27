@@ -1,3 +1,8 @@
 asgiref==3.8.1
 Django==5.1.7
 sqlparse==0.5.3
+firebase-admin~=6.7.0
+africastalking~=1.2.9
+celery~=5.4.0
+django_celery_beat~=2.7.0
+flower~=2.0.1

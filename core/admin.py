@@ -9,7 +9,7 @@ class StateAdmin(admin.ModelAdmin):
     search_fields = ('id', 'name', 'description')
 
 @admin.register(NotificationType)
-class TypeAdmin(admin.ModelAdmin):
+class NotificationTypeAdmin(admin.ModelAdmin):
     list_display = ('name', 'description', 'date_modified', 'date_created')
     search_fields = ('id', 'name', 'description')
 
@@ -37,7 +37,10 @@ class ProviderAdmin(admin.ModelAdmin):
 @admin.register(Notification)
 class NotificationAdmin(admin.ModelAdmin):
     list_display = (
-        'system', 'notification_type', 'recipient', 'template', 'data', 'sent_time', 'status', 'date_modified', 'date_created')
-    list_filter = ('system', 'notification_type', 'template', 'status')
-    search_fields = ('id', 'system__name', 'notification_type__name', 'recipient', 'template__name', 'status__name')
+        'system', 'unique_identifier', 'notification_type', 'recipient', 'template', 'provider', 'context', 'sent_time',
+        'status', 'date_modified', 'date_created')
+    list_filter = ('system', 'notification_type', 'template', 'provider', 'status')
+    search_fields = (
+        'id', 'system__name', 'unique_identifier', 'notification_type__name', 'recipient', 'template__name',
+        'provider__name', 'status__name')
 
