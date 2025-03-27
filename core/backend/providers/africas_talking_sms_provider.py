@@ -47,6 +47,6 @@ class AfricasTalkingSMSProvider(BaseProvider):
         required_keys = ["username", "api_key"]
         missing_keys = [key for key in required_keys if key not in self.config]
         if missing_keys:
-            logger.error("AfricasTalkingSMSProvider - Missing config keys: %s", ", ".join(missing_keys))
+            logger.error("Africa'sTalkingSMSProvider - Missing config keys: %s", ", ".join(missing_keys))
             return False
         return True
