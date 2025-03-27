@@ -33,8 +33,10 @@ class SMSNotification(BaseNotification):
         :return: True if validation passes.
         """
         phone_pattern = r'^\+?[1-9]\d{1,14}$'  # E.164 format
-        if not re.match(phone_pattern, self.recipient):
-            raise ValidationError("Invalid phone number")
+        for recipient in self.recipient.split(","):
+            recipient = recipient.strip()
+            if not re.match(phone_pattern, recipient):
+                raise ValidationError("Invalid phone number")
 
         if not self.template.content:
             raise ValidationError("SMS template requires content")
