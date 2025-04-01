@@ -20,7 +20,7 @@ class BaseNotification(ABC):
         """
         self.notification = notification
         self.template = notification.template
-        self.recipient = notification.recipient
+        self.recipients = notification.recipients
         self.context = notification.context
 
     def active_providers(self) -> QuerySet:

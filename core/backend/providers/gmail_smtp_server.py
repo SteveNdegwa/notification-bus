@@ -25,11 +25,11 @@ class GmailSMTPServer(BaseProvider):
         self.client.set_debuglevel(0)  # Turn off debug output
         self.client.login(self.config['sender'], self.config['password'])
 
-    def send(self, recipient: Union[str, List[str]], content: Dict[str, Union[str, List[str], List[str]]]) -> bool:
+    def send(self, recipients: List[str], content: Dict[str, Union[str, List[str], List[str]]]) -> bool:
         """
         Composes and sends an email using SMTP.
 
-        :param recipient: Single or multiple email addresses.
+        :param recipients: List of email addresses.
         :param content: Dictionary containing subject, message, cc, bcc, attachments, etc.
         :return: True if email is sent successfully, False otherwise.
         """
@@ -42,7 +42,7 @@ class GmailSMTPServer(BaseProvider):
             msg['Reply-To'] = content.get('reply_to', '')
 
             # Format recipient field
-            msg['To'] = recipient if isinstance(recipient, str) else ",".join(recipient)
+            msg['To'] = ",".join(recipients)
             msg['Date'] = formatdate(localtime=True)
             msg['Subject'] = content.get('subject', '')
 
@@ -70,10 +70,8 @@ class GmailSMTPServer(BaseProvider):
             else:
                 msg.attach(MIMEText(message, 'plain'))
 
-            # Normalize recipients into list
-            if isinstance(recipient, str):
-                recipient = [email.strip() for email in recipient.split(",")]
-            toaddrs = recipient + cc + bcc
+            # add cc and bcc to list of recipients
+            toaddrs = recipients + cc + bcc
 
             # Handle file attachments
             attachments = content.get('attachment', [])

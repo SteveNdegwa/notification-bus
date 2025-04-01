@@ -19,21 +19,19 @@ class AfricasTalkingSMSProvider(BaseProvider):
         africastalking.initialize(username, api_key)
         self.client = africastalking.SMS
 
-    def send(self, recipient: Union[str, List[str]], content: Dict[str, str]) -> bool:
+    def send(self, recipients: List[str], content: Dict[str, str]) -> bool:
         """
         Sends an SMS to one or more recipients.
 
-        :param recipient: Phone number(s) in E.164 format (str or List[str]).
+        :param recipients: List of phone number(s).
         :param content: Dict with 'body' key containing the message.
         :return: True if SMS sent successfully, False otherwise.
         """
         try:
-            if isinstance(recipient, str):
-                recipient = [r.strip() for r in recipient.split(",")]
             message = content.get("body", "")
             sender_id = self.config.get("sender_id", None)  # Optional sender ID
 
-            response = self.client.send(message, recipient, sender_id=sender_id if sender_id else None)
+            response = self.client.send(message, recipients, sender_id=sender_id if sender_id else None)
             logger.info("Africa's Talking response: %s", response)
             return True
         except Exception as ex:

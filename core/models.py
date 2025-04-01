@@ -77,7 +77,7 @@ class Notification(BaseModel):
     unique_identifier = models.CharField(max_length=255, null=True, blank=True)
     system = models.ForeignKey(System, on_delete=models.CASCADE)
     notification_type = models.ForeignKey(NotificationType, on_delete=models.CASCADE)
-    recipient = models.TextField(help_text="One recipient or comma-separated multiple recipients")
+    recipients = models.JSONField(default=list)
     template = models.ForeignKey(Template, null=True, on_delete=models.SET_NULL)
     provider = models.ForeignKey(Provider, null=True, on_delete=models.SET_NULL)
     context = models.JSONField()
@@ -85,7 +85,7 @@ class Notification(BaseModel):
     status = models.ForeignKey(State, on_delete=models.CASCADE)
 
     def __str__(self):
-        return "%s %s notification to %s" %(self.system.name, self.notification_type.name, self.recipient)
+        return "%s %s notification to %s" %(self.system.name, self.notification_type.name, self.recipients)
 
     class Meta:
         ordering = ('-date_created',)

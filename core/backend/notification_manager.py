@@ -42,8 +42,8 @@ class NotificationManager:
         if not isinstance(notification_data['notification_type'], str):
             notification_data['notification_type'] = str(notification_data['notification_type']).lower()
 
-        if 'recipient' not in notification_data:
-            raise ValueError("Missing 'recipient' in notification data")
+        if 'recipients' not in notification_data:
+            raise ValueError("Missing 'recipients' in notification data")
 
         if 'context' not in notification_data:
             raise ValueError("Missing 'context' in notification data")
@@ -52,6 +52,11 @@ class NotificationManager:
 
         # Normalize template name
         notification_data['template_name'] = str(notification_data.get('template_name', '')).lower()
+
+        # Normalize recipients
+        if isinstance(notification_data['recipients'], str):
+            notification_data['recipients'] = [
+                recipient.strip() for recipient in notification_data['recipients'].split(",")]
 
     @staticmethod
     def save_notification(notification_data: Dict) -> Notification:
@@ -72,7 +77,7 @@ class NotificationManager:
             system=system,
             unique_identifier=notification_data.get('unique_identifier', ''),
             notification_type=notification_type,
-            recipient=notification_data.get('recipient'),
+            recipients=notification_data.get('recipients'),
             template=template,
             context=notification_data.get('context'),
             status=StateService().get(name='Pending')
@@ -126,7 +131,7 @@ class NotificationManager:
 
                 provider_class_instance.initialize()
 
-                if provider_class_instance.send(notification.recipient, content):
+                if provider_class_instance.send(recipients=notification.recipients, content=content):
                     NotificationService().update(
                         pk=notification.id,
                         provider=provider,

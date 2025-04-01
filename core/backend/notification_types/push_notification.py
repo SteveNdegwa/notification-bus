@@ -33,7 +33,7 @@ class PushNotification(BaseNotification):
         :raises ValidationError: if no recipient is found.
         :return: True if validation passes.
         """
-        if not self.recipient:
+        if not self.recipients:
             raise ValidationError("Push notification requires a device token")
 
         return True

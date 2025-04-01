@@ -26,28 +26,20 @@ class FirebasePushProvider(BaseProvider):
         else:
             self.client = firebase_admin.get_app()
 
-    def send(self, recipient: Union[str, List[str]], content: Dict[str, str]) -> bool:
+    def send(self, recipients: List[str], content: Dict[str, str]) -> bool:
         """
         Send push notification to a device or list of devices.
 
-        :param recipient: Device token(s) - either a single string or comma-separated string or list of tokens.
+        :param recipients: List of Device token(s),
         :param content: Dictionary with 'title', 'body', and optional 'data'.
         :return: True if sent successfully to at least one token.
         """
         try:
-            # Normalize recipient tokens into a list
-            if isinstance(recipient, str):
-                tokens = [token.strip() for token in recipient.split(",") if token.strip()]
-            elif isinstance(recipient, list):
-                tokens = recipient
-            else:
-                raise ValueError("Recipient must be a string or list of device tokens")
-
-            if not tokens:
+            if not recipients:
                 raise ValueError("No valid device tokens provided")
 
             message_payload = messaging.MulticastMessage(
-                tokens=tokens,
+                tokens=recipients,
                 notification=messaging.Notification(
                     title=content.get('title', 'Notification'),
                     body=content.get('body', '')
@@ -55,10 +47,10 @@ class FirebasePushProvider(BaseProvider):
                 data=content.get('data', {})  # Optional payload
             )
 
-            response = messaging.send_multicast(message_payload)
+            response = messaging.send_each_for_multicast(message_payload)
             logger.info(
                 "FirebasePushProvider - Sent push to %d tokens. Success: %d, Failure: %d",
-                len(tokens),
+                len(recipients),
                 response.success_count,
                 response.failure_count
             )

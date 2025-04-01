@@ -37,10 +37,10 @@ class ProviderAdmin(admin.ModelAdmin):
 @admin.register(Notification)
 class NotificationAdmin(admin.ModelAdmin):
     list_display = (
-        'system', 'unique_identifier', 'notification_type', 'recipient', 'template', 'provider', 'context', 'sent_time',
+        'system', 'unique_identifier', 'notification_type', 'recipients', 'template', 'provider', 'context', 'sent_time',
         'status', 'date_modified', 'date_created')
     list_filter = ('system', 'notification_type', 'template', 'provider', 'status')
     search_fields = (
-        'id', 'system__name', 'unique_identifier', 'notification_type__name', 'recipient', 'template__name',
+        'id', 'system__name', 'unique_identifier', 'notification_type__name', 'recipients', 'template__name',
         'provider__name', 'status__name')
 
