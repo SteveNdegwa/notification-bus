@@ -37,7 +37,7 @@ class TemplateAdmin(admin.ModelAdmin):
 @admin.register(Provider)
 class ProviderAdmin(admin.ModelAdmin):
     list_display = (
-        'name', 'description', 'notification_type', 'config', 'priority', 'is_active', 'date_modified', 'date_created')
+        'name', 'description', 'notification_type', 'priority', 'config', 'is_active', 'date_modified', 'date_created')
     list_filter = ('notification_type', 'is_active')
     search_fields = ('id', 'name', 'description', 'notification_type__name')
 

@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, Union, List
+from typing import Dict, List
 
 import africastalking
 
@@ -31,7 +31,7 @@ class AfricasTalkingSMSProvider(BaseProvider):
         """
         try:
             message = content.get("body", "")
-            sender_id = self.config.get("sender_id", None)
+            sender_id = content.get("sender_id", None)
             africastalking.initialize(self.config.get("username"), self.config.get("api_key"))
             response = africastalking.SMS.send(message, recipients, sender_id=sender_id if sender_id else None)
             logger.info("Africa's Talking response: %s", response)
