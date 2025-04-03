@@ -9,6 +9,7 @@ from typing import Dict, List, Union
 from os.path import basename
 
 from core.backend.providers.base_provider import BaseProvider
+from core.models import State
 
 logger = logging.getLogger(__name__)
 
@@ -24,13 +25,13 @@ class GmailSMTPServer(BaseProvider):
             return False
         return True
 
-    def send(self, recipients: List[str], content: Dict[str, Union[str, List[str], List[str]]]) -> bool:
+    def send(self, recipients: List[str], content: Dict[str, Union[str, List[str], List[str]]]) -> State:
         """
         Composes and sends an email using SMTP.
 
         :param recipients: List of email addresses.
         :param content: Dictionary containing subject, message, cc, bcc, attachments, etc.
-        :return: True if email is sent successfully, False otherwise.
+        :return: Sent state if email is sent successfully else Failed state.
         """
         try:
             msg = MIMEMultipart()
@@ -89,10 +90,11 @@ class GmailSMTPServer(BaseProvider):
             server.login(self.config['sender'], self.config['password'])
             server.sendmail(from_addr=from_address, to_addrs=toaddrs, msg=msg.as_string())
             server.close()
-            return True
+
+            return State.sent()
 
         except Exception as ex:
             logger.exception("GmailSMTPServer - send exception: %s", ex)
-            return False
+            return State.failed()
 
 

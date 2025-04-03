@@ -7,3 +7,4 @@ africastalking~=1.2.9
 celery~=5.4.0
 django_celery_beat~=2.7.0
 flower~=2.0.1
+requests~=2.32.3

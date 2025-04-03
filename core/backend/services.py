@@ -1,5 +1,5 @@
 from utils.service_base import ServiceBase
-from core.models import State, NotificationType, System, Template, Provider, Notification
+from core.models import State, NotificationType, System, Template, Provider, Notification, Organisation
 
 
 class StateService(ServiceBase):
@@ -10,6 +10,9 @@ class NotificationTypeService(ServiceBase):
 
 class SystemService(ServiceBase):
     manager = System.objects
+
+class OrganisationService(ServiceBase):
+    manager = Organisation.objects
 
 class TemplateService(ServiceBase):
     manager = Template.objects

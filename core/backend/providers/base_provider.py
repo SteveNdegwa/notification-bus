@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
 from typing import Dict, List
 
+from core.models import State
+
 
 class BaseProvider(ABC):
     """
@@ -20,10 +22,10 @@ class BaseProvider(ABC):
         pass
 
     @abstractmethod
-    def send(self, recipients: List[str], content: Dict[str, str]) -> bool:
+    def send(self, recipients: List[str], content: Dict[str, str]) -> State:
         """
         Send the notification to the recipient with the given content.
-        Must return True if successful, False otherwise.
+        Returns send notification status
         """
         pass
 
