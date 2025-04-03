@@ -32,3 +32,14 @@ class NotifyAPIsManager:
         except Exception as ex:
             logger.exception("NotifyAPIsManager - queue_send_notification exception: %s" % ex)
             return JsonResponse({"code": "999.999.999", "message": "Send notification failed with an exception"})
+
+    @csrf_exempt
+    def sms_response(self, request):
+        try:
+            data = json.loads(request.body)
+            print(data)
+            # if data.get('deliveryStatus') == 'DeliveredToTerminal':
+            return JsonResponse({"code": "100.000.000", "message": "Success"})
+        except Exception as ex:
+            logger.exception("NotifyAPIsManager - queue_send_notification exception: %s" % ex)
+            return JsonResponse({"code": "999.999.999", "message": "Send notification failed with an exception"})

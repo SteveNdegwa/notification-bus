@@ -11,9 +11,9 @@ from core.backend.providers.base_provider import BaseProvider
 from core.backend.providers.providers_registry import PROVIDER_CLASSES
 
 from core.backend.services import SystemService, NotificationTypeService, TemplateService, NotificationService, \
-    StateService
+    StateService, OrganisationService
 
-from core.models import Notification, Provider
+from core.models import Notification, Provider, State
 
 logger = logging.getLogger(__name__)
 
@@ -33,25 +33,31 @@ class NotificationManager:
         Normalize values for consistency.
         """
         if 'system' not in notification_data:
-            raise ValueError("Missing 'system' in notification data")
-        if not isinstance(notification_data['system'], str):
-            notification_data['system'] = str(notification_data['system']).lower()
+            raise KeyError("Missing 'system' in notification data")
 
         if 'notification_type' not in notification_data:
-            raise ValueError("Missing 'notification_type' in notification data")
-        if not isinstance(notification_data['notification_type'], str):
-            notification_data['notification_type'] = str(notification_data['notification_type']).lower()
+            raise KeyError("Missing 'notification_type' in notification data")
 
         if 'recipients' not in notification_data:
-            raise ValueError("Missing 'recipients' in notification data")
+            raise KeyError("Missing 'recipients' in notification data")
 
         if 'context' not in notification_data:
-            raise ValueError("Missing 'context' in notification data")
+            raise KeyError("Missing 'context' in notification data")
         if not isinstance(notification_data['context'], dict):
             raise ValueError("'context' must be a dictionary")
 
+        # Normalize data
+        notification_data['system'] = str(notification_data['system']).lower()
+
+        # Normalize organisation
+        if 'organisation' in notification_data:
+            notification_data['organisation'] = str(notification_data['organisation']).lower()
+
+        # Normalize notification type
+        notification_data['notification_type'] = str(notification_data['notification_type']).lower()
+
         # Normalize template name
-        notification_data['template_name'] = str(notification_data.get('template_name', '')).lower()
+        notification_data['template'] = str(notification_data.get('template', '')).lower()
 
         # Normalize recipients
         if isinstance(notification_data['recipients'], str):
@@ -68,14 +74,21 @@ class NotificationManager:
         if system is None:
             raise Exception("Invalid system")
 
+        organisation = None
+        if 'organisation' in notification_data and notification_data['organisation']:
+            organisation = OrganisationService().get(name=notification_data['organisation'])
+            if organisation is None:
+                raise ValueError("Invalid organisation")
+
         notification_type = NotificationTypeService().get(name=notification_data.get('notification_type'))
         if notification_type is None:
             raise Exception("Invalid notification type")
 
-        template = TemplateService().get(name=notification_data.get('template_name'))
+        template = TemplateService().get(name=notification_data.get('template'))
 
         notification = NotificationService().create(
             system=system,
+            organisation=organisation,
             unique_identifier=notification_data.get('unique_identifier', ''),
             notification_type=notification_type,
             recipients=notification_data.get('recipients'),
@@ -130,14 +143,19 @@ class NotificationManager:
                     logger.error("Invalid configuration for provider: %s" % provider.name)
                     continue
 
-                if provider_class_instance.send(recipients=notification.recipients, content=content):
-                    NotificationService().update(
-                        pk=notification.id,
-                        provider=provider,
-                        sent_time=timezone.now(),
-                        status=StateService().get(name='Sent')
-                    )
-                    return True
+                send_notification_state = provider_class_instance.send(
+                    recipients=notification.recipients, content=content)
+
+                if send_notification_state == State.failed():
+                    continue
+
+                NotificationService().update(
+                    pk=notification.id,
+                    provider=provider,
+                    sent_time=timezone.now(),
+                    status=send_notification_state
+                )
+                return True
 
             # If none of the providers succeed
             raise Exception("Notification not sent")

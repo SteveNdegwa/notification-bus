@@ -1,18 +1,15 @@
 import logging
-from typing import Dict, List, Union
+from typing import Dict, List
 
-import firebase_admin
-from firebase_admin import credentials, messaging
+from firebase_admin import messaging
 
 from core.backend.providers.base_provider import BaseProvider
+from core.models import State
 
 logger = logging.getLogger(__name__)
 
 
 class FirebasePushProvider(BaseProvider):
-    """
-    Push notification provider using Firebase Cloud Messaging (FCM).
-    """
     def validate_config(self) -> bool:
         """
         Check if required Firebase credential fields are present.
@@ -28,13 +25,13 @@ class FirebasePushProvider(BaseProvider):
             return False
         return True
 
-    def send(self, recipients: List[str], content: Dict[str, str]) -> bool:
+    def send(self, recipients: List[str], content: Dict[str, str]) -> State:
         """
         Send push notification to a device or list of devices.
 
         :param recipients: List of Device token(s),
         :param content: Dictionary with 'title', 'body', and optional 'data'.
-        :return: True if sent successfully to at least one token.
+        :return: Sent state if notification is sent successfully else Failed state.
         """
         try:
             if not recipients:
@@ -57,8 +54,11 @@ class FirebasePushProvider(BaseProvider):
                 response.failure_count
             )
 
-            return response.success_count > 0
+            if response.success_count == 0:
+                raise Exception("Push notification not sent")
+
+            return State.sent()
 
         except Exception as ex:
             logger.exception("FirebasePushProvider - send exception: %s", ex)
-            return False
+            return State.failed()

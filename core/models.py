@@ -25,6 +25,20 @@ class State(GenericBaseModel):
     class Meta:
         ordering = ('-date_created',)
 
+    @classmethod
+    def sent(cls):
+        state, created = cls.objects.get_or_create(name='Sent')
+        return state
+
+    @classmethod
+    def failed(cls):
+        state, created = cls.objects.get_or_create(name='Failed')
+        return state
+
+    @classmethod
+    def confirmation_pending(cls):
+        state, created = cls.objects.get_or_create(name='ConfirmationPending')
+        return state
 
 class NotificationType(GenericBaseModel):
     def __str__(self):
@@ -44,6 +58,15 @@ class System(GenericBaseModel):
 
     def __str__(self):
         return self.name
+
+    class Meta:
+        ordering = ('-date_created',)
+
+class Organisation(GenericBaseModel):
+    system = models.ForeignKey(System, on_delete=models.CASCADE)
+
+    def __str__(self):
+        return "%s - %s" % (self.system.name, self.name)
 
     class Meta:
         ordering = ('-date_created',)
@@ -77,6 +100,7 @@ class Provider(GenericBaseModel):
 class Notification(BaseModel):
     unique_identifier = models.CharField(max_length=255, null=True, blank=True)
     system = models.ForeignKey(System, on_delete=models.CASCADE)
+    organisation = models.ForeignKey(Organisation, null=True, blank=True, on_delete=models.CASCADE)
     notification_type = models.ForeignKey(NotificationType, on_delete=models.CASCADE)
     recipients = models.JSONField(default=list)
     template = models.ForeignKey(Template, null=True, on_delete=models.SET_NULL)

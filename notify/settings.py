@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure-)m0ql0yaqc_vn2b!9d)!n%*15)q)2pnn#2319)&#rn*u6$shws
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["*"]
 
 
 # Application definition
@@ -125,11 +125,17 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 """ RabbitMQ configs """
-RABBITMQ_USER = os.environ.get('RABBITMQ_USER')
-RABBITMQ_PASSWORD = os.environ.get('RABBITMQ_PASSWORD')
-RABBITMQ_HOST = os.environ.get('RABBITMQ_HOST')
-RABBITMQ_VHOST = os.environ.get('RABBITMQ_VHOST')
-RABBITMQ_PORT = os.environ.get('RABBITMQ_PORT')
+# RABBITMQ_USER = os.environ.get('RABBITMQ_USER')
+# RABBITMQ_PASSWORD = os.environ.get('RABBITMQ_PASSWORD')
+# RABBITMQ_HOST = os.environ.get('RABBITMQ_HOST')
+# RABBITMQ_VHOST = os.environ.get('RABBITMQ_VHOST')
+# RABBITMQ_PORT = os.environ.get('RABBITMQ_PORT')
+
+RABBITMQ_HOST = 'localhost'
+RABBITMQ_PORT = 5672
+RABBITMQ_USER = 'guest'
+RABBITMQ_PASSWORD = 'guest'
+RABBITMQ_VHOST = '/'
 
 """ Celery configs """
 CELERY_BROKER_URL = f'amqp://{RABBITMQ_USER}:{RABBITMQ_PASSWORD}@{RABBITMQ_HOST}:{RABBITMQ_PORT}/{RABBITMQ_VHOST}'
