@@ -42,8 +42,7 @@ class EmailNotification(BaseNotification):
         """
         email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
 
-        for recipient in self.recipient.split(","):
-            recipient = recipient.strip()
+        for recipient in self.recipients:
             if not re.match(email_pattern, recipient):
                 raise ValidationError("Invalid email address")
 

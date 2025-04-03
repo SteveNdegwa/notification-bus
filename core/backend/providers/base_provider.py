@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Dict
+from typing import Dict, List
 
 
 class BaseProvider(ABC):
@@ -11,24 +11,6 @@ class BaseProvider(ABC):
         # Store configuration dictionary (e.g., API keys, host, port)
         self.config = provider_config
 
-        # Placeholder for client connection (e.g., SMTP object, API client)
-        self.client = None
-
-    @abstractmethod
-    def initialize(self) -> None:
-        """
-        Set up the provider-specific client (e.g., establish SMTP connection).
-        """
-        pass
-
-    @abstractmethod
-    def send(self, recipient: str, content: Dict[str, str]) -> bool:
-        """
-        Send the notification to the recipient with the given content.
-        Must return True if successful, False otherwise.
-        """
-        pass
-
     @abstractmethod
     def validate_config(self) -> bool:
         """
@@ -36,3 +18,12 @@ class BaseProvider(ABC):
         This prevents runtime errors due to missing credentials or settings.
         """
         pass
+
+    @abstractmethod
+    def send(self, recipients: List[str], content: Dict[str, str]) -> bool:
+        """
+        Send the notification to the recipient with the given content.
+        Must return True if successful, False otherwise.
+        """
+        pass
+

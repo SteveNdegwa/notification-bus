@@ -20,7 +20,7 @@ class BaseNotification(ABC):
         """
         self.notification = notification
         self.template = notification.template
-        self.recipient = notification.recipient
+        self.recipients = notification.recipients
         self.context = notification.context
 
     def active_providers(self) -> QuerySet:
@@ -32,7 +32,7 @@ class BaseNotification(ABC):
         return ProviderService().filter(
             notification_type=self.notification.notification_type,
             is_active=True
-        )
+        ).order_by('priority')
 
     @abstractmethod
     def prepare_content(self) -> Dict[str, str]:
