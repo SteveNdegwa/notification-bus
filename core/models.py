@@ -64,6 +64,7 @@ class Template(GenericBaseModel):
 class Provider(GenericBaseModel):
     notification_type = models.ForeignKey(NotificationType, on_delete=models.CASCADE)
     config = models.JSONField()
+    priority = models.IntegerField(null=True, blank=True)
     is_active = models.BooleanField(default=True)
     class_name = models.CharField(max_length=100,  help_text="Callback class containing its config")
 

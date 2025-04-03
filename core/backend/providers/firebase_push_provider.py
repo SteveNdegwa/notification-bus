@@ -13,18 +13,20 @@ class FirebasePushProvider(BaseProvider):
     """
     Push notification provider using Firebase Cloud Messaging (FCM).
     """
-
-    def initialize(self) -> None:
+    def validate_config(self) -> bool:
         """
-        Initialize the Firebase app using the provided configuration.
-        The config must contain a valid Firebase service account JSON.
+        Check if required Firebase credential fields are present.
         """
-        # Avoid re-initializing Firebase app if already done
-        if not firebase_admin._apps:
-            cred = credentials.Certificate(self.config)
-            self.client = firebase_admin.initialize_app(cred)
-        else:
-            self.client = firebase_admin.get_app()
+        required_keys = [
+            "type", "project_id", "private_key_id", "private_key",
+            "client_email", "client_id", "auth_uri", "token_uri",
+            "auth_providepr_x509_cert_url", "client_x509_cert_url"
+        ]
+        missing_keys = [key for key in required_keys if key not in self.config]
+        if missing_keys:
+            logger.error("FirebasePushProvider - Missing config keys: %s", ", ".join(missing_keys))
+            return False
+        return True
 
     def send(self, recipients: List[str], content: Dict[str, str]) -> bool:
         """
@@ -60,18 +62,3 @@ class FirebasePushProvider(BaseProvider):
         except Exception as ex:
             logger.exception("FirebasePushProvider - send exception: %s", ex)
             return False
-
-    def validate_config(self) -> bool:
-        """
-        Check if required Firebase credential fields are present.
-        """
-        required_keys = [
-            "type", "project_id", "private_key_id", "private_key",
-            "client_email", "client_id", "auth_uri", "token_uri",
-            "auth_providepr_x509_cert_url", "client_x509_cert_url"
-        ]
-        missing_keys = [key for key in required_keys if key not in self.config]
-        if missing_keys:
-            logger.error("FirebasePushProvider - Missing config keys: %s", ", ".join(missing_keys))
-            return False
-        return True

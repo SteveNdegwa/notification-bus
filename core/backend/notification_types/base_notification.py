@@ -32,7 +32,7 @@ class BaseNotification(ABC):
         return ProviderService().filter(
             notification_type=self.notification.notification_type,
             is_active=True
-        )
+        ).order_by('priority')
 
     @abstractmethod
     def prepare_content(self) -> Dict[str, str]:

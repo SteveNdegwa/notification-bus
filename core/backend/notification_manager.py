@@ -129,8 +129,6 @@ class NotificationManager:
                     logger.error("Invalid configuration for provider: %s" % provider.name)
                     continue
 
-                provider_class_instance.initialize()
-
                 if provider_class_instance.send(recipients=notification.recipients, content=content):
                     NotificationService().update(
                         pk=notification.id,

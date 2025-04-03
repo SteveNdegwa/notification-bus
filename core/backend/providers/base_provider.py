@@ -11,13 +11,11 @@ class BaseProvider(ABC):
         # Store configuration dictionary (e.g., API keys, host, port)
         self.config = provider_config
 
-        # Placeholder for client connection (e.g., SMTP object, API client)
-        self.client = None
-
     @abstractmethod
-    def initialize(self) -> None:
+    def validate_config(self) -> bool:
         """
-        Set up the provider-specific client (e.g., establish SMTP connection).
+        Check if all necessary configuration values are present and valid.
+        This prevents runtime errors due to missing credentials or settings.
         """
         pass
 
@@ -29,10 +27,3 @@ class BaseProvider(ABC):
         """
         pass
 
-    @abstractmethod
-    def validate_config(self) -> bool:
-        """
-        Check if all necessary configuration values are present and valid.
-        This prevents runtime errors due to missing credentials or settings.
-        """
-        pass
