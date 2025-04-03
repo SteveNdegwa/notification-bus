@@ -58,11 +58,12 @@ class NotificationManager:
             notification_data['recipients'] = [
                 recipient.strip() for recipient in notification_data['recipients'].split(",")]
 
-    @staticmethod
-    def save_notification(notification_data: Dict) -> Notification:
+    def save_notification(self, notification_data: Dict) -> Notification:
         """
         Create a notification instance in the database.
         """
+        self.validate_notification_data(notification_data)
+
         system = SystemService().get(name=notification_data.get('system'))
         if system is None:
             raise Exception("Invalid system")
