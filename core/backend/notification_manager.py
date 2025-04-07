@@ -209,7 +209,7 @@ class NotificationManager:
         Queues a notification callback
         """
         app.send_task(
-            f'{system_name}.handle_send_notification_response',
+            f'{system_name}.handle_notification_response',
             args=(response_data,),
             queue=f'{system_name}_queue'
         )
