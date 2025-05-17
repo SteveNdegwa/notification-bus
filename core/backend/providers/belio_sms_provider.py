@@ -9,7 +9,7 @@ from core.models import State
 logger = logging.getLogger(__name__)
 
 
-class SimpleAPISMSProvider(BaseProvider):
+class BelioSMSProvider(BaseProvider):
     def validate_config(self) -> bool:
         """
         Ensures required configuration values are present.
@@ -17,7 +17,7 @@ class SimpleAPISMSProvider(BaseProvider):
         required_keys = ["api_key", "cookie", "url", "default_sms_service_id", "callback_url"]
         missing_keys = [key for key in required_keys if key not in self.config]
         if missing_keys:
-            logger.error("SimpleAPISMSProvider - Missing config keys: %s", ", ".join(missing_keys))
+            logger.error("BelioSMSProvider - Missing config keys: %s", ", ".join(missing_keys))
             return False
         return True
 
@@ -55,5 +55,5 @@ class SimpleAPISMSProvider(BaseProvider):
 
             return State.confirmation_pending()
         except Exception as ex:
-            logger.exception("SimpleAPISMSProvider - send exception: %s", ex)
+            logger.exception("BelioSMSProvider - send exception: %s", ex)
             return State.failed()

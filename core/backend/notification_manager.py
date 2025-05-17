@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, Type, Any, Tuple, Optional, Union
+from typing import Dict, Type, Any, Tuple, Optional, Union, List
 from uuid import UUID
 
 from django.utils import timezone
@@ -30,7 +30,21 @@ class NotificationManager:
         }
 
     @staticmethod
-    def validate_notification_data(notification_data: Any):
+    def _clean_recipients(notification_type: str, recipients: Union[List[str], str]) -> List[str]:
+        """
+        Cleans the recipients.
+        """
+        cleaned_recipients = set()
+        if isinstance(recipients, str):
+            recipients = [recipient for recipient in recipients.split(",")]
+        for recipient in recipients:
+            recipient = recipient.strip()
+            if notification_type == "sms":
+                recipient = recipient.replace("+", "")
+            cleaned_recipients.add(recipient)
+        return list(cleaned_recipients)
+
+    def _validate_notification_data(self, notification_data: Any):
         """
         Validate required fields in the notification data.
         Normalize values for consistency.
@@ -63,16 +77,15 @@ class NotificationManager:
         notification_data['template'] = str(notification_data.get('template', '')).lower()
 
         # Normalize recipients
-        if isinstance(notification_data['recipients'], str):
-            notification_data['recipients'] = [
-                recipient.strip() for recipient in notification_data['recipients'].split(",")]
+        notification_data['recipients'] = self._clean_recipients(
+            notification_data['notification_type'], notification_data['recipients'])
 
     def save_notification(self, notification_data: Dict) -> Tuple[Optional[Notification], Optional[str]]:
         """
         Create a notification instance in the database.
         """
         try:
-            self.validate_notification_data(notification_data)
+            self._validate_notification_data(notification_data)
 
             system = SystemService().get(name=notification_data.get('system'))
             if system is None:
@@ -107,7 +120,7 @@ class NotificationManager:
             logger.exception("NotificationManager - save_notification exception: %s" % ex)
             return None, str(ex)
 
-    def get_notification_instance(self, notification) -> BaseNotification:
+    def _get_notification_instance(self, notification) -> BaseNotification:
         """
         Instantiate a handler class based on the notification type.
         """
@@ -118,7 +131,7 @@ class NotificationManager:
         return notification_class(notification)
 
     @staticmethod
-    def get_provider_class_instance(provider: Provider) -> BaseProvider:
+    def _get_provider_class_instance(provider: Provider) -> BaseProvider:
         """
         Dynamically instantiate a provider class using its name from the database
         and pass its configuration dictionary to the constructor.
@@ -134,7 +147,7 @@ class NotificationManager:
         Updates status to 'Sent' or 'Failed' accordingly.
         """
         try:
-            notification_handler = self.get_notification_instance(notification)
+            notification_handler = self._get_notification_instance(notification)
             notification_handler.validate()
 
             active_providers = notification_handler.active_providers()
@@ -144,7 +157,7 @@ class NotificationManager:
             content = notification_handler.prepare_content()
 
             for provider in active_providers:
-                provider_class_instance = self.get_provider_class_instance(provider)
+                provider_class_instance = self._get_provider_class_instance(provider)
 
                 if not provider_class_instance.validate_config():
                     logger.error("Invalid configuration for provider: %s" % provider.name)
@@ -209,7 +222,7 @@ class NotificationManager:
         Queues a notification callback
         """
         app.send_task(
-            f'{system_name}.handle_send_notification_response',
+            f'{system_name}.handle_notification_response',
             args=(response_data,),
             queue=f'{system_name}_queue'
         )

@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, Any
 
 from django.core.exceptions import ValidationError
 from django.template import Template, Context
@@ -11,7 +11,7 @@ class PushNotification(BaseNotification):
     Handles push notifications by preparing message content and validating required fields.
     """
 
-    def prepare_content(self) -> Dict[str, str]:
+    def prepare_content(self) -> Dict[str, Any]:
         """
         Prepares the push notification content by rendering the body with context.
         Title is taken from context with a fallback default.

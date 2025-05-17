@@ -36,9 +36,9 @@ class NotifyAPIsManager:
             return JsonResponse({"code": "999.999.999", "message": "Send notification failed with an exception"})
 
     @csrf_exempt
-    def simple_api_sms_callback(self, request):
+    def belio_sms_provider_callback(self, request):
         """
-        Handle Simple API SMS delivery status callback.
+        Handle Belio SMS Provider delivery status callback.
 
         This view function processes HTTP POST requests containing SMS delivery status updates.
         It expects the request body to contain JSON data with the delivery status, correlator, and timestamp.
@@ -70,5 +70,5 @@ class NotifyAPIsManager:
 
             return JsonResponse({"message": "Success"})
         except Exception as ex:
-            logger.exception("NotifyAPIsManager - simple_api_sms_callback exception: %s" % ex)
+            logger.exception("NotifyAPIsManager - belio_sms_provider_callback exception: %s" % ex)
             return JsonResponse({"message": "Internal server error"}, status=500)

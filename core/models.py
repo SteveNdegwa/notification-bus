@@ -37,7 +37,7 @@ class State(GenericBaseModel):
 
     @classmethod
     def confirmation_pending(cls):
-        state, created = cls.objects.get_or_create(name='ConfirmationPending')
+        state, created = cls.objects.get_or_create(name='Confirmation Pending')
         return state
 
 class NotificationType(GenericBaseModel):
