@@ -37,7 +37,7 @@ services:
     depends_on:
       - postgres
       - rabbitmq
-    command: gunicorn --bind 0.0.0.0:8000 --timeout 999 -w 2 notify.wsgi:application
+    command: gunicorn --bind 0.0.0.0:8000 --timeout 30 -w 2 notify.wsgi:application
 
   celery_worker:
     image: stevendegwa/notification_bus:latest
