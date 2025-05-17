@@ -59,7 +59,7 @@ jobs:
 
   deploy:
     runs-on: ubuntu-latest
-    needs: docker-build-push
+    needs: build
     steps:
       - name: Run deployment commands
         uses: appleboy/ssh-action@v1.0.0
