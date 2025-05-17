@@ -1,0 +1,101 @@
+version: "3.8"
+
+x-postgres-env: &postgres-env
+  POSTGRES_PASSWORD: postgres
+  POSTGRES_USER: postgres
+  POSTGRES_DB: notification_bus
+
+x-rabbitmq-env: &rabbitmq-env
+  RABBITMQ_DEFAULT_USER: guest
+  RABBITMQ_DEFAULT_PASS: guest
+
+x-common-app-env: &common-app-env
+  DJANGO_SECRET_KEY: django-insecure-)m0ql0yaqc_vn2b!9d)!n%*15)q)2pnn#2319)&#rn*u6$shws
+  DJANGO_DEBUG: "True"
+  SQL_ENGINE: django.db.backends.postgresql
+  SQL_DATABASE: notification_bus
+  SQL_USER: postgres
+  SQL_PASSWORD: postgres
+  SQL_HOST: postgres
+  SQL_PORT: "5432"
+  RABBITMQ_USER: guest
+  RABBITMQ_PASSWORD: guest
+  RABBITMQ_HOST: rabbitmq
+  RABBITMQ_PORT: "5672"
+  RABBITMQ_VHOST: /
+
+services:
+  app:
+    image: notification_bus:app
+    container_name: notification_bus_app
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      <<: *common-app-env
+    volumes:
+      - .:/usr/src/app
+    depends_on:
+      - postgres
+      - rabbitmq
+    command: gunicorn --bind 0.0.0.0:8000 --timeout 999 -w 2 notify.wsgi:application
+
+  celery_worker:
+    image: notification_bus:app
+    container_name: notification_bus_celery_worker
+    build: .
+    environment:
+      <<: *common-app-env
+    volumes:
+      - .:/usr/src/app
+    depends_on:
+      - postgres
+      - rabbitmq
+    command: celery -A notify worker --loglevel=info
+
+  celery_beat:
+    image: notification_bus:app
+    container_name: notification_bus_celery_beat
+    build: .
+    environment:
+      <<: *common-app-env
+    volumes:
+      - .:/usr/src/app
+    depends_on:
+      - postgres
+      - rabbitmq
+    command: celery -A notify beat --loglevel=info
+
+  flower:
+    image: notification_bus:app
+    container_name: notification_bus_flower
+    environment:
+      <<: *common-app-env
+    ports:
+      - "5555:5555"
+    command: celery -A notify flower --port=5555 --broker=amqp://guest:guest@rabbitmq:5672/
+    depends_on:
+      - rabbitmq
+
+  postgres:
+    image: postgres:17
+    container_name: notification_bus_postgres
+    environment:
+      <<: *postgres-env
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: notification_bus_rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      <<: *rabbitmq-env
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+
+volumes:
+  postgres_data:
+  rabbitmq_data:
