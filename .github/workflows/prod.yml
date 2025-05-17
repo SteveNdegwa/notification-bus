@@ -56,6 +56,7 @@ jobs:
           context: .
           push: true
           tags: stevendegwa/notification_bus:latest
+          platforms: linux/amd64,linux/arm64/v8
 
   deploy:
     runs-on: ubuntu-latest

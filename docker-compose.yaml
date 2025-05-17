@@ -40,7 +40,7 @@ services:
     command: gunicorn --bind 0.0.0.0:8000 --timeout 999 -w 2 notify.wsgi:application
 
   celery_worker:
-    image: notification_bus:app
+    image: stevendegwa/notification_bus:latest
     container_name: notification_bus_celery_worker
     build: .
     environment:
@@ -53,7 +53,7 @@ services:
     command: celery -A notify worker --loglevel=info
 
   celery_beat:
-    image: notification_bus:app
+    image: stevendegwa/notification_bus:latest
     container_name: notification_bus_celery_beat
     build: .
     environment:
@@ -66,7 +66,7 @@ services:
     command: celery -A notify beat --loglevel=info
 
   flower:
-    image: notification_bus:app
+    image: stevendegwa/notification_bus:latest
     container_name: notification_bus_flower
     environment:
       <<: *common-app-env
