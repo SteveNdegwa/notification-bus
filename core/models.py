@@ -52,9 +52,19 @@ class NotificationType(GenericBaseModel):
         ordering = ('-date_created',)
 
 class System(GenericBaseModel):
+    CALLBACK_TYPES = [
+        ("queue", "Queue"),
+        ("webhook", "Webhook"),
+    ]
+    DEFAULT_CALLBACK_TYPE = "webhook"
+
     email_signature = models.TextField(blank=True)
     sms_signature = models.CharField(max_length=160, blank=True)
     default_from_email = models.EmailField()
+    callback_type = models.CharField(max_length=20, choices=CALLBACK_TYPES, default=DEFAULT_CALLBACK_TYPE)
+    webhook_url = models.URLField(blank=True, null=True)
+    webhook_auth_token = models.CharField(max_length=255, blank=True, null=True)
+    queue_name = models.CharField(max_length=255, blank=True, null=True)
 
     def __str__(self):
         return self.name

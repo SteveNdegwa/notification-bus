@@ -66,6 +66,7 @@ class NotifyAPIsManager:
                 NotificationManager().update_notification_status(
                     notification_id=notification_id,
                     status=State.failed(),
+                    sent_time=None
                 )
 
             return JsonResponse({"message": "Success"})

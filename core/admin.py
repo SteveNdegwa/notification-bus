@@ -16,9 +16,12 @@ class NotificationTypeAdmin(admin.ModelAdmin):
 @admin.register(System)
 class SystemAdmin(admin.ModelAdmin):
     list_display = (
-        'name', 'description', 'email_signature', 'sms_signature', 'default_from_email', 'date_modified',
-        'date_created')
-    search_fields = ('id', 'name', 'description', 'email_signature', 'sms_signature', 'default_from_email')
+        'name', 'description', 'email_signature', 'sms_signature', 'default_from_email', 'callback_type',
+        'date_modified', 'date_created')
+    list_filter = ('callback_type',)
+    search_fields = (
+        'id', 'name', 'description', 'email_signature', 'sms_signature', 'default_from_email', 'callback_type',
+        'queue_name')
 
 @admin.register(Organisation)
 class OrganisationAdmin(admin.ModelAdmin):
