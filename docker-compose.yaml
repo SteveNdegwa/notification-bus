@@ -26,9 +26,8 @@ x-common-app-env: &common-app-env
 
 services:
   app:
-    image: notification_bus:app
+    image: stevendegwa/notification_bus:latest
     container_name: notification_bus_app
-    build: .
     ports:
       - "8000:8000"
     environment:
