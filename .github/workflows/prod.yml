@@ -75,6 +75,6 @@ jobs:
             git config --global --add safe.directory /srv/apps/live/notification-bus
             git pull origin main
             docker-compose pull
-            docker-compose up -d --build
+            docker-compose up -d
             docker-compose exec -T app python manage.py migrate
             docker-compose exec -T app python manage.py collectstatic --no-input
