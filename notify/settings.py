@@ -8,6 +8,14 @@ SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "dev-secret")
 DEBUG = os.environ.get("DJANGO_DEBUG", "true").lower() == "true"
 
 ALLOWED_HOSTS = ["*"]
+CSRF_ALLOWED_HOSTS = ["*"]
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+CSRF_TRUSTED_ORIGINS = [
+	'https://rentwaveafrica.co.ke',
+	'https://www.rentwaveafrica.co.ke',
+	'https://notify.rentwaveafrica.co.ke',
+]
 
 # Application definition
 INSTALLED_APPS = [
@@ -50,8 +58,6 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'notify.wsgi.application'
-
-CSRF_ALLOWED_HOSTS = ["*"]
 
 DATABASES = {
     'default': {
