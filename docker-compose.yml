@@ -1,0 +1,123 @@
+version: "3.9"
+
+x-postgres-env: &postgres-env
+  POSTGRES_USER: postgres
+  POSTGRES_DB: postgres
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+
+x-rabbitmq-env: &rabbitmq-env
+  RABBITMQ_DEFAULT_USER: notify
+  RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS}
+
+x-django-env: &django-env
+  DJANGO_DEBUG: false
+  DJANGO_SETTINGS_MODULE: notify.settings
+  DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
+  CELERY_BROKER_URL: amqp://notify:${RABBITMQ_DEFAULT_PASS}@rabbitmq:5672//
+  DATABASE_DB: postgres
+  DATABASE_USER: postgres
+  DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
+  DATABASE_HOST: postgres
+  DATABASE_PORT: 5432
+  SYSTEM_BASE_URL: https://notify.lipasync.com
+
+x-app-image: &app-image ${IMAGE_TAG}
+
+networks:
+  backend:
+    driver: bridge
+
+volumes:
+  prod_notify_postgres_data:
+  prod_notify_rabbitmq_data:
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: prod_notify_postgres
+    restart: always
+    environment:
+      <<: *postgres-env
+    volumes:
+      - prod_notify_postgres_data:/var/lib/postgresql/data
+    networks:
+      - backend
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: prod_notify_rabbitmq
+    restart: always
+    environment:
+      <<: *rabbitmq-env
+    ports:
+      - "15673:15672"
+    volumes:
+      - prod_notify_rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  notify:
+    image: *app-image
+    container_name: prod_notify_app
+    environment:
+      <<: *django-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    ports:
+      - "8016:8000"
+    networks:
+      - backend
+    restart: always
+
+  celery_worker:
+    image: *app-image
+    container_name: prod_notify_celery_worker
+    command: celery -A notify worker -l INFO
+    environment:
+      <<: *django-env
+    depends_on:
+      - notify
+      - rabbitmq
+    networks:
+      - backend
+    restart: always
+
+  celery_beat:
+    image: *app-image
+    container_name: prod_notify_celery_beat
+    command: celery -A notify beat -l INFO
+    environment:
+      <<: *django-env
+    depends_on:
+      - notify
+      - rabbitmq
+    networks:
+      - backend
+    restart: always
+
+  flower:
+    image: mher/flower:2.0
+    container_name: prod_notify_flower
+    restart: always
+    environment:
+      <<: *django-env
+    ports:
+      - "5557:5555"
+    networks:
+      - backend
+    depends_on:
+      - rabbitmq
