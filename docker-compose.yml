@@ -56,7 +56,7 @@ services:
     environment:
       <<: *rabbitmq-env
     ports:
-      - "15673:15672"
+      - "15674:15672"
     volumes:
       - prod_notify_rabbitmq_data:/var/lib/rabbitmq
     networks:
