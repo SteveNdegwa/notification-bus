@@ -17,6 +17,10 @@ x-django-env: &django-env
 
 x-app-image: &app-image ${IMAGE_TAG}
 
+x-common-labels: &common-labels
+  observability.app: notification-bus
+  observability.environment: ${SHARED_ENV}
+
 networks:
   default:
     name: ${SHARED_NETWORK}
@@ -25,16 +29,22 @@ networks:
 services:
   notify:
     image: *app-image
-    container_name: prod_notify_app
+    container_name: ${SHARED_ENV}_notify_app
+    labels:
+      <<: *common-labels
+      observability.component: api
     environment:
       <<: *django-env
     ports:
-      - "8016:8000"
+      - "${API_PORT}:8000"
     restart: always
 
   celery_worker:
     image: *app-image
-    container_name: prod_notify_celery_worker
+    container_name: ${SHARED_ENV}_notify_celery_worker
+    labels:
+      <<: *common-labels
+      observability.component: celery-worker
     command: celery -A notify worker -l INFO
     environment:
       <<: *django-env
@@ -42,7 +52,10 @@ services:
 
   celery_beat:
     image: *app-image
-    container_name: prod_notify_celery_beat
+    container_name: ${SHARED_ENV}_notify_celery_beat
+    labels:
+      <<: *common-labels
+      observability.component: celery-beat
     command: celery -A notify beat -l INFO
     environment:
       <<: *django-env
