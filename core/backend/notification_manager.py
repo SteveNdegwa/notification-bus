@@ -91,12 +91,14 @@ class NotificationManager:
             notification_data['recipients'] = []
         notification_data['user_ids'] = notification_data.get('user_ids') or []
 
-    def save_notification(self, notification_data: Dict) -> Optional[Notification]:
+    def save_notification(self, notification_data: Dict, raise_exception: bool = False) -> Optional[Notification]:
         """
         Create and persist a Notification object.
 
         :param notification_data: Validated and normalized data.
         :type notification_data: Dict
+        :param raise_exception: Re-raise validation or persistence errors after optional callback handling.
+        :type raise_exception: bool
         :return: The created Notification object, or None on failure.
         :rtype: Optional[Notification]
         """
@@ -105,11 +107,11 @@ class NotificationManager:
 
             system = self._get_system(notification_data.get('system'))
             if system is None:
-                raise Exception("Invalid system")
+                raise ValueError("Invalid system")
 
             notification_type = NotificationTypeService().get(name=notification_data['notification_type'])
             if notification_type is None:
-                raise Exception("Invalid notification type")
+                raise ValueError("Invalid notification type")
 
             template = self._get_template_for_system(
                 template_name=notification_data.get('template'),
@@ -149,6 +151,8 @@ class NotificationManager:
                     "message": str(ex),
                     "unique_identifier": notification_data.get("unique_identifier", None),
                 })
+            if raise_exception:
+                raise
             return None
 
     @staticmethod
