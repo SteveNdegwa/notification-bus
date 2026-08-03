@@ -84,6 +84,11 @@ WSGI_APPLICATION = 'notify.wsgi.application'
 
 CSRF_ALLOWED_HOSTS = ["*"]
 
+CSRF_TRUSTED_ORIGINS = _env_list(
+    "CSRF_TRUSTED_ORIGINS",
+    default=["https://notify.lipasync.com"],
+)
+
 CORS_ALLOW_HEADERS = list(default_headers) + [
     "X-API-KEY",
 ]
