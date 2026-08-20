@@ -1,3 +1,1 @@
-# Spin Notify
 
-Notify App.
