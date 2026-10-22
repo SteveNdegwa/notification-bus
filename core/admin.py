@@ -13,11 +13,11 @@ from core.models import (
     Provider,
     Notification,
     NotificationTry,
-    Organization,
     NotificationOverride,
     NotificationOverrideProvider,
     NotificationOverrideConfig,
     ProviderConfig,
+    ProviderConfigDefinition,
     ProviderConfigFailureAlert,
     ProviderConfigEntry,
     ProviderCallback,
@@ -75,15 +75,20 @@ def truncate_value(value, length=75):
     return text if len(text) <= length else text[:length] + "..."
 
 
-def apply_scope_filter(queryset, system_id=None, organization_id=None):
-    if not system_id and not organization_id:
+def apply_scope_filter(queryset, system_id=None, organization_remote_code=None):
+    if not system_id and not organization_remote_code:
         return queryset
-    scope = Q(systems__isnull=True, organizations__isnull=True)
-    if system_id:
-        scope |= Q(systems__id=system_id)
-    if organization_id:
-        scope |= Q(organizations__id=organization_id)
-    return queryset.filter(scope).distinct()
+    eligible_ids = []
+    for item in queryset.prefetch_related("systems"):
+        system_ids = {str(system.id) for system in item.systems.all()}
+        remote_codes = item.organization_remote_codes or []
+        if (
+            (not system_ids and not remote_codes)
+            or str(system_id or "") in system_ids
+            or organization_remote_code in remote_codes
+        ):
+            eligible_ids.append(item.id)
+    return queryset.filter(id__in=eligible_ids)
 
 
 class BaseReadonlyInline(admin.TabularInline):
@@ -100,9 +105,38 @@ class BaseReadonlyInline(admin.TabularInline):
 
 class ProviderConfigEntryInline(admin.TabularInline):
     model = ProviderConfigEntry
-    fields = ("key", "value", "value_type")
+    fields = ("definition", "value")
+    autocomplete_fields = ("definition",)
     extra = 1
     verbose_name_plural = "Config entries"
+
+    class Media:
+        js = ("core/admin/dependent_autocomplete.js",)
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        field = super().formfield_for_foreignkey(db_field, request, **kwargs)
+        if db_field.name == "definition":
+            field.widget.attrs.update({
+                "data-forward-field": "#id_provider",
+                "data-forward-param": "provider",
+            })
+        return field
+
+    def get_formset(self, request, obj=None, **kwargs):
+        formset = super().get_formset(request, obj, **kwargs)
+        if obj is not None:
+            formset.form.base_fields["definition"].queryset = ProviderConfigDefinition.objects.filter(
+                provider=obj.provider,
+            ).order_by("name")
+        return formset
+
+
+class ProviderConfigDefinitionInline(admin.TabularInline):
+    model = ProviderConfigDefinition
+    fields = ("name", "key", "value_type", "description")
+    extra = 0
+    show_change_link = True
+    verbose_name_plural = "Config definitions"
 
 
 class ProviderConfigInline(admin.TabularInline):
@@ -249,7 +283,7 @@ class ProviderAdmin(admin.ModelAdmin):
         "description",
         "notification_type",
         "systems",
-        "organizations",
+        "organization_remote_codes",
         "priority",
         "class_name",
         "callback_verification_config",
@@ -260,24 +294,24 @@ class ProviderAdmin(admin.ModelAdmin):
         "date_modified",
     )
     autocomplete_fields = ("notification_type",)
-    filter_horizontal = ("systems", "organizations")
-    inlines = (ProviderConfigInline, ProviderCallbackInline)
+    filter_horizontal = ("systems",)
+    inlines = (ProviderConfigDefinitionInline, ProviderConfigInline, ProviderCallbackInline)
     date_hierarchy = "date_created"
     ordering = ("notification_type__name", "priority", "name")
     list_select_related = ("notification_type",)
     prepopulated_fields = {"slug": ("name",)}
 
     def get_queryset(self, request):
-        return super().get_queryset(request).prefetch_related("systems", "organizations")
+        return super().get_queryset(request).prefetch_related("systems")
 
     def scope_summary(self, obj):
         systems = [system.name for system in obj.systems.all()]
-        organizations = [organization.name for organization in obj.organizations.all()]
-        if not systems and not organizations:
+        remote_codes = obj.organization_remote_codes or []
+        if not systems and not remote_codes:
             return "Global"
         return "; ".join(filter(None, [
             f"Systems: {', '.join(systems)}" if systems else "",
-            f"Organizations: {', '.join(organizations)}" if organizations else "",
+            f"Organization codes: {', '.join(remote_codes)}" if remote_codes else "",
         ]))
 
     scope_summary.short_description = "Scope"
@@ -286,19 +320,21 @@ class ProviderAdmin(admin.ModelAdmin):
         queryset, may_have_duplicates = super().get_search_results(request, queryset, search_term)
         notification_type_id = request.GET.get("notification_type")
         system_id = request.GET.get("system")
-        organization_id = request.GET.get("organization")
+        organization_remote_code = request.GET.get("organization_remote_code")
         override_id = request.GET.get("override")
         if override_id:
             override = NotificationOverride.objects.filter(pk=override_id).values(
-                "notification_type_id", "system_id", "organization_id",
+                "notification_type_id", "system_id", "organization_remote_code",
             ).first()
             if override:
                 notification_type_id = notification_type_id or override["notification_type_id"]
                 system_id = system_id or override["system_id"]
-                organization_id = organization_id or override["organization_id"]
+                organization_remote_code = (
+                    organization_remote_code or override["organization_remote_code"]
+                )
         if notification_type_id:
             queryset = queryset.filter(notification_type_id=notification_type_id)
-        queryset = apply_scope_filter(queryset, system_id, organization_id)
+        queryset = apply_scope_filter(queryset, system_id, organization_remote_code)
         return queryset, may_have_duplicates
 
     def short_callback_verification_config(self, obj):
@@ -316,7 +352,7 @@ class ProviderConfigAdmin(admin.ModelAdmin):
     list_filter = ("provider__notification_type", "provider", "is_active")
     search_fields = ("id", "name", "description", "provider__name", "provider__slug")
     autocomplete_fields = ("provider",)
-    filter_horizontal = ("systems", "organizations")
+    filter_horizontal = ("systems",)
     readonly_fields = ("id", "date_created", "date_modified")
     fields = (
         "id",
@@ -324,7 +360,7 @@ class ProviderConfigAdmin(admin.ModelAdmin):
         "description",
         "provider",
         "systems",
-        "organizations",
+        "organization_remote_codes",
         "priority",
         "is_active",
         "date_created",
@@ -335,16 +371,16 @@ class ProviderConfigAdmin(admin.ModelAdmin):
     list_select_related = ("provider", "provider__notification_type")
 
     def get_queryset(self, request):
-        return super().get_queryset(request).prefetch_related("systems", "organizations")
+        return super().get_queryset(request).prefetch_related("systems")
 
     def scope_summary(self, obj):
         systems = [system.name for system in obj.systems.all()]
-        organizations = [organization.name for organization in obj.organizations.all()]
-        if not systems and not organizations:
+        remote_codes = obj.organization_remote_codes or []
+        if not systems and not remote_codes:
             return "Global"
         return "; ".join(filter(None, [
             f"Systems: {', '.join(systems)}" if systems else "",
-            f"Organizations: {', '.join(organizations)}" if organizations else "",
+            f"Organization codes: {', '.join(remote_codes)}" if remote_codes else "",
         ]))
 
     scope_summary.short_description = "Scope"
@@ -355,20 +391,27 @@ class ProviderConfigAdmin(admin.ModelAdmin):
         if provider_id:
             queryset = queryset.filter(provider_id=provider_id)
         queryset = apply_scope_filter(
-            queryset, request.GET.get("system"), request.GET.get("organization"),
+            queryset, request.GET.get("system"), request.GET.get("organization_remote_code"),
         )
         return queryset, may_have_duplicates
 
 
-@admin.register(Organization)
-class OrganizationAdmin(admin.ModelAdmin):
-    list_display = ("name", "system", "identifier_type", "identifier", "date_modified", "date_created")
-    list_filter = ("identifier_type", "system", "date_created")
-    search_fields = ("id", "name", "identifier", "system__name")
-    autocomplete_fields = ("system",)
+@admin.register(ProviderConfigDefinition)
+class ProviderConfigDefinitionAdmin(admin.ModelAdmin):
+    list_display = ("name", "key", "provider", "value_type", "description", "date_modified")
+    list_filter = ("provider", "value_type")
+    search_fields = ("id", "name", "key", "description", "provider__name")
+    autocomplete_fields = ("provider",)
     readonly_fields = ("id", "date_created", "date_modified")
-    fields = ("id", "name", "system", "identifier_type", "identifier", "date_created", "date_modified")
-    list_select_related = ("system",)
+    ordering = ("provider__name", "name")
+    list_select_related = ("provider",)
+
+    def get_search_results(self, request, queryset, search_term):
+        queryset, may_have_duplicates = super().get_search_results(request, queryset, search_term)
+        provider_id = request.GET.get("provider")
+        if provider_id:
+            queryset = queryset.filter(provider_id=provider_id)
+        return queryset, may_have_duplicates
 
 
 class NotificationOverrideProviderInline(admin.TabularInline):
@@ -390,8 +433,8 @@ class NotificationOverrideProviderInline(admin.TabularInline):
                 "data-forward-param": "notification_type",
                 "data-forward-system-field": "#id_system",
                 "data-forward-system-param": "system",
-                "data-forward-organization-field": "#id_organization",
-                "data-forward-organization-param": "organization",
+                "data-forward-organization-field": "#id_organization_remote_code",
+                "data-forward-organization-param": "organization_remote_code",
             })
         return field
 
@@ -400,7 +443,7 @@ class NotificationOverrideProviderInline(admin.TabularInline):
         if obj is not None:
             formset.form.base_fields["provider"].queryset = apply_scope_filter(Provider.objects.filter(
                 notification_type=obj.notification_type,
-            ), obj.system_id, obj.organization_id).order_by("priority", "name")
+            ), obj.system_id, obj.organization_remote_code).order_by("priority", "name")
         return formset
 
 
@@ -408,18 +451,18 @@ class NotificationOverrideProviderInline(admin.TabularInline):
 class NotificationOverrideAdmin(admin.ModelAdmin):
     list_display = ("scope", "notification_type", "use_other_providers", "date_modified", "date_created")
     list_filter = ("notification_type", "use_other_providers", "system")
-    search_fields = ("id", "system__name", "organization__name", "organization__identifier")
-    autocomplete_fields = ("system", "organization", "notification_type")
+    search_fields = ("id", "system__name", "organization_remote_code")
+    autocomplete_fields = ("system", "notification_type")
     readonly_fields = ("id", "date_created", "date_modified")
     fields = (
-        "id", "system", "organization", "notification_type", "use_other_providers",
+        "id", "system", "organization_remote_code", "notification_type", "use_other_providers",
         "date_created", "date_modified",
     )
     inlines = (NotificationOverrideProviderInline,)
-    list_select_related = ("system", "organization", "notification_type")
+    list_select_related = ("system", "notification_type")
 
     def scope(self, obj):
-        return obj.organization or obj.system
+        return obj.organization_remote_code or obj.system
 
     scope.short_description = "Applies to"
 
@@ -447,10 +490,10 @@ class NotificationOverrideConfigInline(admin.TabularInline):
         if obj is not None:
             formset.form.base_fields["provider_config"].queryset = apply_scope_filter(ProviderConfig.objects.filter(
                 provider=obj.provider,
-            ), obj.override.system_id, obj.override.organization_id).order_by("priority", "name")
+            ), obj.override.system_id, obj.override.organization_remote_code).order_by("priority", "name")
             formset.form.base_fields["provider_config"].widget.attrs.update({
                 "data-forward-system-value": str(obj.override.system_id or ""),
-                "data-forward-organization-value": str(obj.override.organization_id or ""),
+                "data-forward-organization-value": obj.override.organization_remote_code,
             })
         return formset
 
@@ -459,7 +502,7 @@ class NotificationOverrideConfigInline(admin.TabularInline):
 class NotificationOverrideProviderAdmin(admin.ModelAdmin):
     list_display = ("override", "provider", "priority", "use_other_configs", "date_modified")
     list_filter = ("override__notification_type", "provider", "use_other_configs")
-    search_fields = ("id", "override__system__name", "override__organization__name", "provider__name")
+    search_fields = ("id", "override__system__name", "override__organization_remote_code", "provider__name")
     autocomplete_fields = ("override", "provider")
     readonly_fields = ("id", "date_created", "date_modified")
     inlines = (NotificationOverrideConfigInline,)
@@ -485,7 +528,7 @@ class NotificationOverrideProviderAdmin(admin.ModelAdmin):
             if override:
                 form.base_fields["provider"].queryset = apply_scope_filter(Provider.objects.filter(
                     notification_type=override.notification_type,
-                ), override.system_id, override.organization_id).order_by("priority", "name")
+                ), override.system_id, override.organization_remote_code).order_by("priority", "name")
         return form
 
 
@@ -495,7 +538,7 @@ class TemplateAdmin(admin.ModelAdmin):
         "name",
         "code",
         "system",
-        "organization",
+        "organization_remote_code",
         "description",
         "notification_type",
         "subject",
@@ -504,15 +547,15 @@ class TemplateAdmin(admin.ModelAdmin):
         "date_modified",
         "date_created",
     )
-    list_filter = ("system", "organization", "notification_type", "is_active", "date_created", "date_modified")
-    search_fields = ("id", "name", "code", "system__name", "organization__name", "description", "notification_type__name", "subject", "body")
+    list_filter = ("system", "organization_remote_code", "notification_type", "is_active", "date_created", "date_modified")
+    search_fields = ("id", "name", "code", "system__name", "organization_remote_code", "description", "notification_type__name", "subject", "body")
     readonly_fields = ("id", "date_created", "date_modified")
     fields = (
         "id",
         "name",
         "code",
         "system",
-        "organization",
+        "organization_remote_code",
         "description",
         "notification_type",
         "subject",
@@ -521,10 +564,10 @@ class TemplateAdmin(admin.ModelAdmin):
         "date_created",
         "date_modified",
     )
-    autocomplete_fields = ("system", "organization", "notification_type")
+    autocomplete_fields = ("system", "notification_type")
     date_hierarchy = "date_created"
-    list_select_related = ("system", "organization", "notification_type")
-    ordering = ("system__name", "organization__name", "notification_type__name", "name")
+    list_select_related = ("system", "notification_type")
+    ordering = ("system__name", "organization_remote_code", "notification_type__name", "name")
 
     def short_body(self, obj):
         return truncate_value(obj.body)
@@ -560,7 +603,7 @@ class NotificationAdmin(admin.ModelAdmin):
         "id",
         "delivery_cycle",
         "system",
-        "organization",
+        "organization_remote_code",
         "unique_identifier",
         "email_thread",
         "notification_type",
@@ -581,7 +624,7 @@ class NotificationAdmin(admin.ModelAdmin):
         "status",
         "recipient_resolution_status",
         "system",
-        "organization",
+        "organization_remote_code",
         "notification_type",
         "provider",
         "provider_config",
@@ -624,7 +667,7 @@ class NotificationAdmin(admin.ModelAdmin):
         "id",
         "delivery_cycle",
         "system",
-        "organization",
+        "organization_remote_code",
         "unique_identifier",
         "notification_type",
         "user_ids",
@@ -647,11 +690,11 @@ class NotificationAdmin(admin.ModelAdmin):
         "date_created",
         "date_modified",
     )
-    autocomplete_fields = ("system", "organization", "notification_type", "template", "provider", "provider_config")
+    autocomplete_fields = ("system", "notification_type", "template", "provider", "provider_config")
     inlines = (NotificationTryInline, NotificationSystemCallbackInline)
     actions = ("retry_notification_processing", "send_system_callback_for_terminal_notifications")
     date_hierarchy = "date_created"
-    list_select_related = ("system", "organization", "notification_type", "template", "provider", "provider_config")
+    list_select_related = ("system", "notification_type", "template", "provider", "provider_config")
 
     class Media:
         js = ("core/admin/dependent_autocomplete.js",)
@@ -664,8 +707,8 @@ class NotificationAdmin(admin.ModelAdmin):
                 "data-forward-param": "notification_type",
                 "data-forward-system-field": "#id_system",
                 "data-forward-system-param": "system",
-                "data-forward-organization-field": "#id_organization",
-                "data-forward-organization-param": "organization",
+                "data-forward-organization-field": "#id_organization_remote_code",
+                "data-forward-organization-param": "organization_remote_code",
             })
         elif db_field.name == "provider_config":
             field.widget.attrs.update({
@@ -673,15 +716,14 @@ class NotificationAdmin(admin.ModelAdmin):
                 "data-forward-param": "provider",
                 "data-forward-system-field": "#id_system",
                 "data-forward-system-param": "system",
-                "data-forward-organization-field": "#id_organization",
-                "data-forward-organization-param": "organization",
+                "data-forward-organization-field": "#id_organization_remote_code",
+                "data-forward-organization-param": "organization_remote_code",
             })
         return field
 
     def get_queryset(self, request):
         return super().get_queryset(request).select_related(
             "system",
-            "organization",
             "notification_type",
             "template",
             "provider",
