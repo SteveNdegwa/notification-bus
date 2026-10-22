@@ -23,7 +23,7 @@ from core.backend.providers.base_provider import BaseProvider
 from core.backend.services import SystemService, NotificationTypeService, TemplateService, NotificationService
 
 from core.models import (
-    EmailThread, Notification, NotificationOverride, NotificationTry, Organization,
+    EmailThread, Notification, NotificationOverride, NotificationTry,
     Provider, ProviderConfig, ProviderConfigFailureAlert, System, SystemCallback,
 )
 
@@ -105,8 +105,10 @@ class NotificationManager:
         notification_data['system'] = str(notification_data['system'])
         notification_data['notification_type'] = str(notification_data['notification_type']).lower()
         notification_data['template'] = str(notification_data.get('template', '')).lower()
-        if notification_data.get('organization_id') and notification_data.get('organization_remote_code'):
-            raise ValueError("Provide either organization_id or organization_remote_code, not both")
+        remote_code = notification_data.get('organization_remote_code')
+        if remote_code is not None and not isinstance(remote_code, str):
+            raise ValueError("organization_remote_code must be a string")
+        notification_data['organization_remote_code'] = (remote_code or '').strip()
         if notification_data.get('recipients'):
             notification_data['recipients'] = self._clean_recipients(
                 notification_data['notification_type'], notification_data['recipients'])
@@ -149,12 +151,11 @@ class NotificationManager:
                 if notification_type is None:
                     raise Exception("Invalid notification type")
 
-                organization = self._get_organization(notification_data, system)
                 template = self._get_template_for_system(
                     template_code=notification_data.get('template'),
                     system=system,
                     notification_type=notification_type,
-                    organization=organization,
+                    organization_remote_code=notification_data['organization_remote_code'],
                 )
                 if email_thread is not None and template is None:
                     raise ValueError("A valid email template is required")
@@ -167,7 +168,7 @@ class NotificationManager:
 
                 notification = NotificationService().create(
                     system=system,
-                    organization=organization,
+                    organization_remote_code=notification_data['organization_remote_code'],
                     unique_identifier=notification_data.get('unique_identifier', ''),
                     notification_type=notification_type,
                     user_ids=notification_data['user_ids'],
@@ -280,35 +281,6 @@ class NotificationManager:
             return system
         return SystemService().get(name=system_identifier.lower())
 
-    @staticmethod
-    def _get_organization(notification_data: Dict, system: System) -> Optional[Organization]:
-        """
-        Resolve an optional organization identifier within the notification's system.
-
-        :param notification_data: Notification payload containing an organization ID or remote code.
-        :type notification_data: Dict
-        :param system: System that must own the organization.
-        :type system: System
-        :return: Matching organization, or None when no organization was supplied.
-        :rtype: Optional[Organization]
-        :raises ValueError: If the identifier does not match an organization in the system.
-        """
-        organization_id = notification_data.get("organization_id")
-        remote_code = notification_data.get("organization_remote_code")
-        if not organization_id and not remote_code:
-            return None
-        identifier_type = (
-            Organization.IdentifierType.ORGANIZATION_ID
-            if organization_id else Organization.IdentifierType.REMOTE_CODE
-        )
-        identifier = str(organization_id or remote_code)
-        organization = Organization.objects.filter(
-            system=system, identifier_type=identifier_type, identifier=identifier,
-        ).first()
-        if organization is None:
-            raise ValueError("Invalid organization identifier for this system")
-        return organization
-
     def resolve_notification_recipients(self, notification: Notification) -> Notification:
         """
         Resolve notification recipients from IDMS when only user IDs were provided.
@@ -363,7 +335,7 @@ class NotificationManager:
 
     @staticmethod
     def _get_template_for_system(
-        template_code: str, system: System, notification_type, organization: Optional[Organization] = None,
+        template_code: str, system: System, notification_type, organization_remote_code: str = "",
     ) -> Optional:
         """
         Fetch a template scoped to the system, falling back to a global template.
@@ -383,9 +355,11 @@ class NotificationManager:
         if not template_code:
             return None
 
-        scope = Q(system__isnull=True, organization__isnull=True) | Q(system=system, organization__isnull=True)
-        if organization is not None:
-            scope |= Q(organization=organization)
+        scope = Q(system__isnull=True, organization_remote_code="") | Q(
+            system=system, organization_remote_code="",
+        )
+        if organization_remote_code:
+            scope |= Q(system=system, organization_remote_code=organization_remote_code)
         templates = TemplateService().filter(
             scope,
             code=template_code,
@@ -396,8 +370,12 @@ class NotificationManager:
         if templates is not None:
             template = templates.annotate(
                 scope_priority=Case(
-                    When(organization=organization, then=0) if organization is not None else When(pk__isnull=True, then=0),
-                    When(system=system, organization__isnull=True, then=1),
+                    When(
+                        system=system,
+                        organization_remote_code=organization_remote_code,
+                        then=0,
+                    ) if organization_remote_code else When(pk__isnull=True, then=0),
+                    When(system=system, organization_remote_code="", then=1),
                     default=2,
                     output_field=IntegerField(),
                 )
@@ -725,17 +703,19 @@ class NotificationManager:
             return False
 
     @staticmethod
-    def _scope_queryset(queryset, notification: Notification, prefix: str = ""):
+    def _scope_queryset(queryset, notification: Notification):
         """Restrict a provider or config queryset to the notification's optional allow-lists."""
-        system_field = f"{prefix}systems"
-        organization_field = f"{prefix}organizations"
-        scope = (
-            Q(**{f"{system_field}__isnull": True, f"{organization_field}__isnull": True})
-            | Q(**{system_field: notification.system})
-        )
-        if notification.organization_id:
-            scope |= Q(**{organization_field: notification.organization})
-        return queryset.filter(scope).distinct()
+        eligible_ids = []
+        for item in queryset.prefetch_related("systems"):
+            system_ids = {system.id for system in item.systems.all()}
+            remote_codes = item.organization_remote_codes or []
+            if (
+                (not system_ids and not remote_codes)
+                or notification.system_id in system_ids
+                or notification.organization_remote_code in remote_codes
+            ):
+                eligible_ids.append(item.id)
+        return queryset.filter(id__in=eligible_ids)
 
     def _eligible_configs(self, provider: Provider, notification: Notification):
         """
@@ -757,7 +737,7 @@ class NotificationManager:
         """
         Build the ordered provider and configuration attempts for a delivery cycle.
 
-        Organization overrides take precedence over system overrides. When no
+        Organization remote-code overrides take precedence over system overrides. When no
         override applies, providers and their active scoped configurations follow
         their normal priorities. Provider/config pairs already tried during the
         notification's current delivery cycle are excluded.
@@ -769,14 +749,15 @@ class NotificationManager:
         :rtype: List[Tuple[Provider, ProviderConfig]]
         """
         override = None
-        if notification.organization_id:
+        if notification.organization_remote_code:
             override = NotificationOverride.objects.filter(
-                organization_id=notification.organization_id,
+                system=notification.system,
+                organization_remote_code=notification.organization_remote_code,
                 notification_type=notification.notification_type,
             ).first()
         if override is None:
             override = NotificationOverride.objects.filter(
-                organization__isnull=True,
+                organization_remote_code="",
                 system=notification.system,
                 notification_type=notification.notification_type,
             ).first()

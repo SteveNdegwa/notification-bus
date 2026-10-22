@@ -31,7 +31,7 @@
                 data.system = systemValue;
             }
             if (organizationValue !== undefined) {
-                data.organization = organizationValue;
+                data.organization_remote_code = organizationValue;
             }
             return data;
         };
