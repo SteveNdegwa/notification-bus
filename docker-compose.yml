@@ -13,8 +13,8 @@ x-django-env: &django-env
 
   CELERY_BROKER_URL: ${CELERY_BROKER_URL}
 
-  SYSTEM_BASE_URL: https://notify.lipasync.com
-  NOTIFICATION_ADMIN_EMAILS: stevencallistus19@gmail.com
+  SYSTEM_BASE_URL: ${SYSTEM_BASE_URL}
+  NOTIFICATION_ADMIN_EMAILS: ${NOTIFICATION_ADMIN_EMAILS}
 
 x-app-image: &app-image ${IMAGE_TAG}
 
