@@ -1,0 +1,63 @@
+version: "3.9"
+
+x-django-env: &django-env
+  DJANGO_DEBUG: false
+  DJANGO_SETTINGS_MODULE: notify.settings
+  DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
+
+  DATABASE_DB: ${DATABASE_DB}
+  DATABASE_USER: ${DATABASE_USER}
+  DATABASE_PASSWORD: ${DATABASE_PASSWORD}
+  DATABASE_HOST: ${DATABASE_HOST}
+  DATABASE_PORT: ${DATABASE_PORT}
+
+  CELERY_BROKER_URL: ${CELERY_BROKER_URL}
+
+  SYSTEM_BASE_URL: https://notify.lipasync.com
+  NOTIFICATION_ADMIN_EMAILS: stevencallistus19@gmail.com
+
+x-app-image: &app-image ${IMAGE_TAG}
+
+x-common-labels: &common-labels
+  observability.app: notification-bus
+  observability.environment: ${SHARED_ENV}
+
+networks:
+  default:
+    name: ${SHARED_NETWORK}
+    external: true
+
+services:
+  notify:
+    image: *app-image
+    container_name: ${SHARED_ENV}_notify_app
+    labels:
+      <<: *common-labels
+      observability.component: api
+    environment:
+      <<: *django-env
+    ports:
+      - "${API_PORT}:8000"
+    restart: always
+
+  celery_worker:
+    image: *app-image
+    container_name: ${SHARED_ENV}_notify_celery_worker
+    labels:
+      <<: *common-labels
+      observability.component: celery-worker
+    command: celery -A notify worker -l INFO
+    environment:
+      <<: *django-env
+    restart: always
+
+  celery_beat:
+    image: *app-image
+    container_name: ${SHARED_ENV}_notify_celery_beat
+    labels:
+      <<: *common-labels
+      observability.component: celery-beat
+    command: celery -A notify beat -l INFO
+    environment:
+      <<: *django-env
+    restart: always
