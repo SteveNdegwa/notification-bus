@@ -89,3 +89,4 @@ class OnfonSMSProvider(BaseProvider):
             logger.exception("OnfonSMSProvider - send exception: %s", ex)
             self.set_last_exception(ex)
             return Notification.Status.FAILED
+
