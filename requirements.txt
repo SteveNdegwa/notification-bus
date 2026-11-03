@@ -10,3 +10,4 @@ requests==2.32.3
 gunicorn==23.0.0
 django-cors-headers==4.7.0
 sentry-sdk==2.38.0
+whitenoise==6.12.0

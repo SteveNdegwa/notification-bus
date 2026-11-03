@@ -51,7 +51,9 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -83,7 +85,10 @@ WSGI_APPLICATION = 'notify.wsgi.application'
 
 CSRF_ALLOWED_HOSTS = ["*"]
 
-CSRF_TRUSTED_ORIGINS = ["https://notify.lipasync.com"]
+CSRF_TRUSTED_ORIGINS = [
+    "https://notify.solumaxventures.com",
+    "https://stage-notify.solumaxventures.com"
+]
 
 CORS_ALLOW_HEADERS = list(default_headers) + [
     "X-API-KEY",
